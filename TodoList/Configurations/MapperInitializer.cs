@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using TodoList.Models;
 
 namespace TodoList.Configurations
 {
@@ -9,7 +10,7 @@ namespace TodoList.Configurations
     {
         public MapperInitializer()
         {
-
+            CreateMap<TodoItem, TodoItemRespose>();
         }
     }
 }
