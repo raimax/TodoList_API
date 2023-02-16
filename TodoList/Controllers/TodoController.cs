@@ -1,11 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TodoList.Models;
 using TodoList.SqlServer;
 
 namespace TodoList.Controllers
 {
-    //[Authorize]
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class TodoController : ControllerBase
@@ -18,20 +20,37 @@ namespace TodoList.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(List<TodoItemRespose>), 200)]
+        [ProducesResponseType(typeof(List<TodoItemRespose>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetList()
         {
-            var items = await _context.TodoItems.ToListAsync();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (userId is null)
+            {
+                return Unauthorized();
+            }
+
+            var items = await _context.TodoItems
+                .Where(x => x.AppUserId == userId)
+                .ToListAsync();
 
             return Ok(items);
         }
 
-        [HttpGet]
-        [ProducesResponseType(typeof(TodoItemRespose), 200)]
-        [ProducesResponseType(404)]
-        public async Task<IActionResult> Get([FromQuery] Guid id)
+        [HttpGet("{id}")]
+        [ProducesResponseType(typeof(TodoItemRespose), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Get([FromRoute] Guid id)
         {
-            var item = await _context.TodoItems.FirstOrDefaultAsync(x => x.Id == id);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (userId is null)
+            {
+                return Unauthorized();
+            }
+
+            var item = await _context.TodoItems
+                .FirstOrDefaultAsync(x => x.Id == id && x.AppUserId == userId);
 
             if (item is null)
             {
@@ -42,13 +61,22 @@ namespace TodoList.Controllers
         }
 
         [HttpPost]
-        [ProducesResponseType(typeof(TodoItemRespose), 201)]
-        [ProducesResponseType(400)]
+        [ProducesResponseType(typeof(TodoItemRespose), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create(ItemRequest input)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (userId is null)
+            {
+                return Unauthorized();
+            }
+
             var item = new TodoItem
             {
                 Content = input.Content,
+                AppUserId = userId,
+                Created = DateTimeOffset.UtcNow
             };
 
             await _context.TodoItems.AddAsync(item);
@@ -61,12 +89,20 @@ namespace TodoList.Controllers
             return BadRequest();
         }
 
-        [HttpDelete]
-        [ProducesResponseType(204)]
-        [ProducesResponseType(404)]
-        public async Task<IActionResult> Remove([FromQuery] Guid id)
+        [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Remove([FromRoute] Guid id)
         {
-            var item = await _context.TodoItems.FirstOrDefaultAsync(x => x.Id == id);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (userId is null)
+            {
+                return Unauthorized();
+
+            }
+            var item = await _context.TodoItems
+                .FirstOrDefaultAsync(x => x.Id == id && x.AppUserId == userId);
 
             if (item is null)
             {
@@ -75,7 +111,12 @@ namespace TodoList.Controllers
 
             _context.TodoItems.Remove(item);
 
-            return NoContent();
+            if (await _context.SaveChangesAsync() > 0)
+            {
+                return NoContent();
+            }
+
+            return BadRequest();
         }
     }
 }

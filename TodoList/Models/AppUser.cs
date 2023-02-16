@@ -2,26 +2,12 @@
 {
     public class AppUser
     {
-        public Guid Id { get; init; }
-        public string GivenName { get; init; }
-        public string FamilyName { get; init; }
-        public string Nickname { get; init; }
-        public string Picture { get; init; }
-        public string Email { get; init; }
+        public string Id { get; init; }
         public ICollection<TodoItem> TodoItems { get; init; }
 
-        public AppUser(
-            string givenName,
-            string familyName,
-            string nickname,
-            string picture,
-            string email)
+        public AppUser(string id)
         {
-            GivenName = givenName;
-            FamilyName = familyName;
-            Nickname = nickname;
-            Picture = picture;
-            Email = email;
+            Id = id;
         }
 
         public void AddTodoItem(TodoItem item)

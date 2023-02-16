@@ -18,6 +18,8 @@ namespace TodoList.SqlServer
 
             modelBuilder.Entity<AppUser>(builder =>
             {
+                builder.HasKey(x => x.Id);
+                builder.Property(x => x.Id).ValueGeneratedNever();
                 builder.HasMany(x => x.TodoItems).WithOne(x => x.AppUser).HasForeignKey(x => x.AppUserId);
             });
 
